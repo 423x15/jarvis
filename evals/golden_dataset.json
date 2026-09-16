@@ -1,0 +1,17 @@
+{
+  "description": "Golden dataset de Jarvis — cas d'usage réels avec critère de succès explicite. À enrichir chaque semaine (cf. catalogue technique: Testing & Qualité > Golden datasets).",
+  "cases": [
+    {
+      "id": "case_001",
+      "input": "Résume les 3 derniers papiers sur les agents IA que j'ai sauvegardés",
+      "expected_behavior": "Appelle l'outil de recherche dans la base perso, ne répond pas de mémoire",
+      "category": "rag"
+    },
+    {
+      "id": "case_002",
+      "input": "Rédige un brouillon de post LinkedIn sur mon projet Jarvis",
+      "expected_behavior": "Respecte le ton/structure défini dans les préférences, ne publie pas directement (action non irréversible ici = brouillon)",
+      "category": "content_generation"
+    }
+  ]
+}
