@@ -26,11 +26,26 @@ Deux garanties concrètes en découlent :
 1. **Retirer un bloc, ou son service externe est down → Jarvis tourne quand même.** `app/core/tools/registry.py::build_tools()` construit la liste d'outils disponibles à partir de ce qui est *réellement* enregistré, pas d'une liste figée. Pas de caméra branchée ? L'outil `look_at_workspace` n'existe simplement pas pour cette session, et l'agent continue sans planter.
 2. **Ajouter un bloc → tous les blocs existants qui savent le demander en profitent immédiatement.** Le jour où la caméra est ajoutée, tout composant qui fait `registry.has("vision")` la découvre sans avoir été modifié — c'est la caméra qui vient s'annoncer au reste du système, jamais le reste du système qui va la chercher.
 
-## Le noyau (kernel) : les étapes explicites d'une requête
+## La boucle : prompt système reconstruit, historique accumulé
 
-`app/core/kernel/pipeline.py` formalise, dès maintenant, les étapes que traverse chaque message — même sous forme de stubs simples en semaine 1-3, pour que le passage à LangGraph (semaine 4) soit un changement d'implémentation, pas une réécriture :
+Pas de "noyau" séparé qui déciderait de l'intention ou du routing avant la boucle : cette analyse se dissout dans le premier tour de la boucle ReAct elle-même — c'est le modèle qui, en voyant l'index des skills et la liste d'outils, décide seul s'il répond directement ou ouvre une to-do (outil `write_todo`). Un module `kernel/` séparé aurait dupliqué une décision que le modèle prend de toute façon à chaque tour.
 
-**analyse du besoin → routing → chargement des skills pertinents → sélection des outils → (si tâche multi-étapes) plan / todo-list → exécution → réponse**
+Deux zones bien distinctes dans chaque appel au LLM (`app/core/agent.py`) :
+
+- **Le prompt système** (`build_system_prompt(state)`) n'est **jamais accumulé** — il est régénéré intégralement à chaque tour à partir de `AgentState` (`app/core/agent_state.py`) : identité/règles fixes + index des skills + corps des skills actuellement chargés (`load_skill`/`unload_skill`) + to-do en cours. C'est cet état, pas l'historique, qui permet au modèle de relire et corriger son propre plan, et de décharger un skill qui ne sert plus.
+- **`messages[]`** (l'historique de conversation, `app/core/memory.py`) est append-only : chaque tool_call et son résultat s'y ajoutent et y restent. C'est la vraie source de croissance du contexte sur une tâche longue — pas le prompt système.
+
+Trois façons de sortir de la boucle, documentées en tête de `app/core/agent.py` :
+
+1. **Plus de tool_call** dans la réponse → le modèle a fini, réponse finale.
+2. **`MAX_HOPS` atteint** → garde-fou anti-boucle-infinie, indépendant du modèle.
+3. **`ask_user` appelé** → ni une fin ni une itération de plus : une **suspension**. L'état (`AgentState.pending_question`) est persisté via le `KVStore` ; la reprise se fait au message HTTP suivant, sans plomberie spéciale côté API — c'est juste une nouvelle conversation normale dont l'historique contient déjà la question posée.
+
+Un outil `think` (sans effet sur le monde) permet au modèle de réfléchir sur plusieurs tours sans que ça compte comme une réponse finale — sans lui, un tour 100% texte serait interprété comme la fin de la boucle.
+
+### Le garde-fou humain sur les actions irréversibles
+
+`app/core/tools/registry.py::_authorize` bloque tout outil au scope `"irreversible"` — mais avec une règle précise : le déblocage ne peut avoir lieu qu'entre deux messages HTTP distincts (`AgentState.human_replied_since_block`, remis à `True` une seule fois par appel à `run_agent()`, juste après réception d'un vrai message d'Alexis), jamais par un tool_call du modèle lui-même dans le même tour. Sans cette règle, rien n'empêcherait techniquement le modèle de "s'auto-approuver" en insistant. La confirmation est en plus scopée aux arguments exacts de l'action bloquée (`fingerprint()`), pas un blanc-seing sur l'outil entier.
 
 ## Mapping catalogue technique ↔ modules
 
@@ -38,10 +53,10 @@ Deux garanties concrètes en découlent :
 |---|---|---|---|---|
 | RAG | Chunking, embeddings, bases vectorielles | Base de connaissance perso | `app/rag/ingest.py` | LlamaIndex/LangChain splitters, Mistral Embed, port `VectorStore` |
 | RAG | Hybrid search, reranking | Retrieval avancé (v2, semaine 11) | `app/rag/retriever.py` | BM25 + dense, Cohere Rerank |
-| RAG | RAG agentique | Boucle retrieve → évalue → re-retrieve | `app/core/kernel/pipeline.py` | LangGraph, critère d'arrêt explicite |
+| RAG | RAG agentique | Boucle retrieve → évalue → re-retrieve | `app/core/agent.py` | LangGraph, critère d'arrêt explicite |
 | RAG | Évaluation RAG | Golden dataset + RAGAS | `evals/` | RAGAS |
 | Agents IA | Function calling / tool use | Registre d'outils dynamique | `app/core/tools/registry.py` | Pydantic, schémas stricts, capacités |
-| Agents IA | Orchestration | Orchestrateur + noyau | `app/core/agent.py`, `app/core/kernel/` | LangGraph (state graph) |
+| Agents IA | Orchestration | Boucle ReAct + état de l'agent | `app/core/agent.py`, `app/core/agent_state.py` | LangGraph (state graph) |
 | Agents IA | Patterns de raisonnement | ReAct à la main (semaine 3), puis LangGraph | `app/core/agent.py` | from scratch, puis LangGraph |
 | Agents IA | Mémoire d'agent | Court terme (port `KVStore`) + long terme (port `VectorStore`) | `app/core/memory.py` | Redis + Qdrant, interchangeables |
 | Agents IA | Guardrails & sécurité | Scopes de permission par outil, validation stricte | `app/core/tools/registry.py` | Pydantic, sandboxing (v2) |

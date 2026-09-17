@@ -28,10 +28,10 @@ Hexagonale de bout en bout : la logique métier (agent, mémoire, outils) ne par
                                      ▼
                           ┌─────────────────────────┐
                           │      ORCHESTRATEUR       │
-                          │  analyse → routing →     │◀── Tools (recherche web,
-                          │  skills → outils → todo  │     LinkedIn draft, vision…
-                          │   app/core/agent.py +     │     app/core/tools/
-                          │   app/core/kernel/        │
+                          │  boucle ReAct + état     │◀── Tools (think, ask_user,
+                          │  (skills, to-do, garde-  │     write_todo, vision…
+                          │   fous) — agent.py +      │     app/core/tools/
+                          │   agent_state.py          │
                           └────────────┬─────────────┘
                                        │  parle uniquement à des PORTS
                     ┌──────────────────┼──────────────────┬───────────────┐
@@ -98,8 +98,8 @@ jarvis/
 │   ├── config.py                  # settings (env vars)
 │   ├── api/routes.py              # endpoints HTTP
 │   ├── core/
-│   │   ├── agent.py               # orchestrateur (ReAct -> LangGraph)
-│   │   ├── kernel/pipeline.py     # analyse du besoin, routing, plan/todo
+│   │   ├── agent.py               # orchestrateur (ReAct -> LangGraph) + prompt système dynamique
+│   │   ├── agent_state.py         # état persistant: to-do, skills chargés, garde-fous
 │   │   ├── memory.py              # mémoire court/long terme (via ports)
 │   │   ├── ports/                 # interfaces: LLMProvider, KVStore, VectorStore, Capability
 │   │   ├── adapters/              # implémentations storage: Redis, Qdrant
