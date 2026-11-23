@@ -1,6 +1,6 @@
 """Registre central des outils que Jarvis peut appeler.
 
-Bloc catalogue technique: Agents IA — function calling / tool use,
+Domain: Agents IA — function calling / tool use,
 Sécurité IA — guardrails (scopes de permission par outil).
 
 Chaque outil déclare:
@@ -56,7 +56,7 @@ _OPTIONAL_TOOLS = [
     ("vision", look_at_workspace_schema, look_at_workspace),
 ]
 
-# Scope de permission par outil — cf. Sécurité IA du catalogue technique.
+# Scope de permission par outil — cf. AI security guardrails.
 # learn_skill n'est PAS irreversible : il n'écrit qu'un brouillon "-draft"
 # qu'Alexis doit relire et renommer pour l'activer (cf. skills/generator.py).
 #

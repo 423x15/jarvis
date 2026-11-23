@@ -1,6 +1,6 @@
 """Mémoire de Jarvis.
 
-Bloc catalogue technique: Agents IA — mémoire d'agent
+Domain: Agents IA — mémoire d'agent
 (court terme / long terme / épisodique).
 
 Ne parle plus jamais à Redis directement : passe par le port KVStore

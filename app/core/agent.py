@@ -1,6 +1,6 @@
 """Orchestrateur de l'agent Jarvis.
 
-Bloc catalogue technique: Agents IA (function calling, orchestration, patterns
+Domain: Agents IA (function calling, orchestration, patterns
 de raisonnement, mémoire, human-in-the-loop).
 
 Ce fichier ne connaît AUCUN SDK de LLM ni de base de données : il parle à

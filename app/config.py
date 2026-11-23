@@ -1,6 +1,6 @@
 """Configuration centrale — chargée depuis les variables d'environnement (.env).
 
-Bloc catalogue technique: Architecture logicielle & système.
+Domain: Architecture logicielle & système.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

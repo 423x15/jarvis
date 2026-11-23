@@ -3,7 +3,7 @@ compatible OpenAI (`/v1/chat/completions`). C'est ce qui permet à Jarvis de
 tourner en local sans rien changer au code : Ollama, LM Studio, vLLM en mode
 serveur exposent tous ce même contrat.
 
-Bloc catalogue technique: Infra & Déploiement (inférence LLM optimisée) —
+Domain: Infra & Déploiement (inférence LLM optimisée) —
 c'est cet adapter qui rend Jarvis déployable dans un environnement restreint
 avec un modèle local (cf. OllamaProvider ci-dessous, qui n'est qu'une
 configuration différente de cette même classe).

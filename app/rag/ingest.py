@@ -1,6 +1,6 @@
 """Pipeline d'ingestion de la base de connaissance perso de Jarvis.
 
-Bloc catalogue technique: RAG (chunking & indexation, embeddings, bases
+Domain: RAG (chunking & indexation, embeddings, bases
 vectorielles), Data & Pipelines (pipelines d'ingestion pour LLM).
 
 Ne parle plus jamais à Qdrant directement : passe par le port VectorStore

@@ -14,7 +14,7 @@ Persisté via le port KVStore (jamais gardé seulement en mémoire du
 process) : un redémarrage de Jarvis ne doit pas perdre une to-do en cours
 ou une question posée à Alexis.
 
-Bloc catalogue technique: Agents IA — mémoire d'agent, human-in-the-loop.
+Domain: Agents IA — mémoire d'agent, human-in-the-loop.
 """
 from __future__ import annotations
 

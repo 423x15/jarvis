@@ -1,4 +1,4 @@
-"""Adapter Mistral — moteur par défaut de Jarvis (cohérence avec la candidature).
+"""Adapter Mistral — moteur par défaut de Jarvis.
 
 Traduit l'interface commune (app/core/llm/base.py) vers le SDK `mistralai`.
 """

@@ -1,7 +1,7 @@
 """Évaluations de l'agent — pas des tests unitaires classiques mais des
 mesures de qualité de comportement (trajectoire, pas juste le résultat final).
 
-Bloc catalogue technique: Agents IA — évaluation d'agent, Testing & Qualité —
+Domain: Agents IA — évaluation d'agent, Testing & Qualité —
 évaluation LLM style unit test.
 
 Semaine 6 de la roadmap: écrire ici 10 évals DeepEval basées sur

@@ -1,5 +1,5 @@
 {
-  "description": "Golden dataset de Jarvis — cas d'usage réels avec critère de succès explicite. À enrichir chaque semaine (cf. catalogue technique: Testing & Qualité > Golden datasets).",
+  "description": "Golden dataset de Jarvis — cas d'usage réels avec critère de succès explicite. À enrichir chaque semaine.",
   "cases": [
     {
       "id": "case_001",
