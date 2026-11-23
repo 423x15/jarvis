@@ -5,7 +5,7 @@ outils, mémoire) ne parle jamais à Mistral, Claude, OpenAI ou Ollama
 directement — il parle à cette interface. Changer de moteur = changer
 une ligne de config, jamais une ligne d'app/core/agent.py.
 
-Bloc catalogue technique: Architecture logicielle & système (patterns
+Domain: Architecture logicielle & système (patterns
 d'architecture — ici, un port/adapter classique).
 """
 from abc import ABC, abstractmethod

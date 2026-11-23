@@ -1,6 +1,6 @@
-# Architecture — mapping Catalogue technique ↔ modules Jarvis
+# Architecture de Jarvis
 
-Ce document répond à un besoin précis : pouvoir attaquer, un par un, les blocs du `Catalogue technique` du plan de stage, en ayant toujours un endroit concret dans le code où les pratiquer. Chaque ligne = un bloc du plan → un module de Jarvis → un emplacement dans le repo → la stack recommandée par le plan lui-même.
+Ce document décrit l'architecture de Jarvis et relie chaque domaine technique (RAG, agents, observabilité, infra…) au module qui l'implémente.
 
 ## Le principe directeur : hexagonal, et vraiment modulaire
 
@@ -47,7 +47,7 @@ Un outil `think` (sans effet sur le monde) permet au modèle de réfléchir sur 
 
 `app/core/tools/registry.py::_authorize` bloque tout outil au scope `"irreversible"` — mais avec une règle précise : le déblocage ne peut avoir lieu qu'entre deux messages HTTP distincts (`AgentState.human_replied_since_block`, remis à `True` une seule fois par appel à `run_agent()`, juste après réception d'un vrai message d'Alexis), jamais par un tool_call du modèle lui-même dans le même tour. Sans cette règle, rien n'empêcherait techniquement le modèle de "s'auto-approuver" en insistant. La confirmation est en plus scopée aux arguments exacts de l'action bloquée (`fingerprint()`), pas un blanc-seing sur l'outil entier.
 
-## Mapping catalogue technique ↔ modules
+## Domaines techniques ↔ modules
 
 | Domaine (plan) | Sous-thème prioritaire | Module Jarvis | Emplacement | Stack |
 |---|---|---|---|---|
@@ -79,18 +79,12 @@ Un outil `think` (sans effet sur le monde) permet au modèle de réfléchir sur 
 | Performance & Scalabilité | Latence | Streaming de tokens | `app/api/routes.py` (v2, semaine 9) | SSE |
 | Performance & Scalabilité | Coûts | Routing multi-modèles selon complexité | `app/core/agent.py` (v2, semaine 14) | routing custom |
 
-## Les 3 différenciateurs (au-delà du catalogue technique)
+## Les 3 différenciateurs 
 
-Ces trois blocs ne correspondent à aucune ligne du catalogue technique — ils sont la valeur ajoutée propre à Jarvis en tant que produit, et existent uniquement grâce à l'architecture hexagonale ci-dessus.
+Ces trois blocs sont la valeur ajoutée propre à Jarvis en tant que produit, et existent uniquement grâce à l'architecture hexagonale ci-dessus.
 
 | Différenciateur | Ce que ça permet | Emplacement | Statut |
 |---|---|---|---|
 | **Skills** | Apprendre une procédure à Jarvis (à la main, depuis une tâche réussie, ou importée) sans toucher au code | `app/core/skills/` (registry, loader, generator), `skills/` | Scaffoldé — à remplir |
 | **Vision / caméra** | Jarvis "voit" un projet physique en cours via webcam | `app/core/vision/` (camera, tool), enregistré comme capacité optionnelle | Scaffoldé — à remplir |
 | **Routines programmées** | Déclencher un skill ou une tâche sur un cron ("tous les lundis...") | `app/core/routines/registry.py` | Scaffoldé — scheduler (APScheduler) à brancher |
-
-## Principe de progression
-
-Chaque semaine du plan de stage a une "Skill drill" (System Design / Code Review / Deploy) déjà définie dans l'onglet *Planning hebdo*. La colonne "Module Jarvis" ci-dessus donne, pour chaque thème technique, l'endroit exact du repo où appliquer ce drill de la semaine plutôt que de le faire dans le vide sur un tutoriel isolé.
-
-Exemple concret : la semaine où le planning dit *"System Design — Architecture agent multi-outils (function calling, orchestrateur, guardrails)"*, le travail se fait directement dans `app/core/agent.py` et `app/core/tools/registry.py`.

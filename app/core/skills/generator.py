@@ -12,7 +12,7 @@ rédige un brouillon de SKILL.md, mais RIEN n'est jamais activé
 automatiquement : le brouillon est écrit dans skills/<slug>-draft/SKILL.md
 et c'est Alexis qui le relit et le renomme (retire le suffixe "-draft")
 pour qu'il devienne actif. Un skill appris sans relecture humaine est un
-skill qu'on ne contrôle plus — cf. Sécurité IA du catalogue technique.
+skill qu'on ne contrôle plus — cf. AI security guardrails.
 
 Semaine 17 de la roadmap.
 """

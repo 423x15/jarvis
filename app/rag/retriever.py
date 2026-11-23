@@ -1,6 +1,6 @@
 """Retrieval sur la base de connaissance perso.
 
-Bloc catalogue technique: RAG (hybrid search semaine 11, reranking semaine 11,
+Domain: RAG (hybrid search semaine 11, reranking semaine 11,
 RAG agentique semaine 13).
 
 Semaine 5: retrieval dense simple (top-k cosine similarity), via le port

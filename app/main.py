@@ -1,7 +1,7 @@
 """Point d'entrée FastAPI de Jarvis.
 
 Semaine 2 de la roadmap: /health + CI.
-Bloc catalogue technique: Architecture logicielle & système (design d'API),
+Domain: Architecture logicielle & système (design d'API),
 Monitoring & Observabilité (logging structuré, à activer ici en premier).
 """
 from contextlib import asynccontextmanager
@@ -29,7 +29,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Jarvis",
-    description="Assistant IA personnel — projet phare de stage Mistral AI",
+    description="Assistant IA personnel — personal AI agent with human-in-the-loop guardrails",
     version="0.1.0",
     lifespan=lifespan,
 )

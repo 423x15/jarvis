@@ -1,6 +1,6 @@
 """Registre des skills — implémente la "progressive disclosure".
 
-Bloc catalogue technique: MLOps/LLMOps (gestion de prompts) + Agents IA
+Domain: MLOps/LLMOps (gestion de prompts) + Agents IA
 (function calling). Analogue direct du système de Skills de Claude, en
 version portable/open source: un dossier = un skill, un YAML frontmatter
 + un corps markdown.

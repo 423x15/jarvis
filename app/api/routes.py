@@ -1,6 +1,6 @@
 """Endpoints HTTP exposés par Jarvis.
 
-Bloc catalogue technique: Architecture logicielle & système (design d'API).
+Domain: Architecture logicielle & système (design d'API).
 TODO semaine 9: ajouter le streaming SSE pour /chat (Performance & Scalabilité — latence).
 """
 from fastapi import APIRouter

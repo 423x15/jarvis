@@ -1,7 +1,7 @@
 [project]
 name = "jarvis"
 version = "0.1.0"
-description = "Assistant IA personnel — projet phare de stage Mistral AI"
+description = "Assistant IA personnel — personal AI agent with human-in-the-loop guardrails"
 requires-python = ">=3.12"
 
 [tool.ruff]

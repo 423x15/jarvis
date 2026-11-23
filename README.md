@@ -1,129 +1,89 @@
-# Jarvis — assistant IA personnel (et projet phare de stage)
+# Jarvis — a personal AI agent that asks before it acts
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Tests](https://img.shields.io/badge/tests-15%20passing-brightgreen)
 
-Un agent IA personnel qui fait progressivement "à peu près tout ce que fait Alexis" : veille technique, rédaction de contenu (LinkedIn/YouTube), suivi de candidatures, recherche dans ses propres notes, automatisation de tâches répétitives — et, à terme, un œil sur ses projets physiques via webcam.
+Jarvis is a personal assistant agent built around one idea: **an agent should never take an irreversible action on its own authority.** The orchestration loop, the permission model and the memory are designed around that guardrail. The LLM engine is a swappable detail (Mistral by default; Claude, OpenAI or a local Ollama model also work).
 
-Ce n'est pas un side-project de plus : c'est **le véhicule pour traiter, un par un, tous les blocs du `Plan_Stage_Mistral_AI_12mois.xlsx`** (onglet *Catalogue technique*). Chaque brique de Jarvis correspond à un domaine que Mistral (et tout lab IA sérieux) attend d'un Applied AI Engineer : RAG, agents, mémoire, infra, observabilité, testing, sécurité, MLOps.
+## What makes it different
 
-Voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) pour le mapping complet bloc → module → stack, et [`docs/ROADMAP.md`](docs/ROADMAP.md) pour la feuille de route semaine par semaine.
+| Idea | How it is implemented | Where |
+|---|---|---|
+| **Human-in-the-loop that cannot be bypassed by the model** | Tools carry a permission scope. An `irreversible` tool is blocked until a *new human HTTP message* arrives; the model cannot approve itself within the same turn. The approval is bound to the exact arguments of the blocked action (fingerprint), not to the tool as a whole. | `app/core/tools/registry.py`, `app/core/agent_state.py` |
+| **Hexagonal architecture (ports & adapters)** | Agent logic only knows interfaces: `LLMProvider`, `KVStore`, `VectorStore`, `Capability`. Switching engine = one env var (`JARVIS_LLM_PROVIDER`), zero change in the agent. | `app/core/ports/`, `app/core/llm/`, `app/core/adapters/` |
+| **A system prompt rebuilt every turn** | The prompt is regenerated from an explicit `AgentState` (loaded skills, to-do, guardrails) instead of accumulating; only `messages[]` is append-only. | `app/core/agent.py` |
+| **Suspend / resume with `ask_user`** | The agent can pause to ask a question; state is persisted in the KV store and the run resumes on the next message. A `think` tool allows multi-turn reasoning without ending the loop. | `app/core/tools/` |
+| **Optional capabilities register themselves** | No webcam plugged in? The vision tool simply does not exist for that session and the agent keeps running. | `app/core/capabilities/registry.py` |
+| **Skills in `SKILL.md` format** | Procedures stored as folders with frontmatter + instructions, loaded on demand. A generator can draft a skill from a completed task, to be reviewed by a human before activation. | `app/core/skills/`, `skills/` |
 
-## Pourquoi Jarvis plutôt qu'un "agent support technique" générique
-
-Le plan de stage proposait deux pistes de projet phare : un agent support inspiré de Thales, ou un petit produit "Mistral-powered". Jarvis fait mieux que les deux à la fois :
-
-- **Produit complet, pas une démo** (pilier n°1 de Mathias) : Alexis l'utilise vraiment, tous les jours — c'est le meilleur test de qualité possible.
-- **Couvre nativement tout le catalogue technique** : un assistant personnel a besoin de RAG (ses notes), d'agents (ses outils), de mémoire (le suivre dans la durée), d'infra (le faire tourner en continu), d'observabilité (savoir ce qu'il fait), de sécurité (actions irréversibles = guardrails).
-- **Value talk chiffrable** (pilier n°8) : temps gagné par semaine, nombre de tâches automatisées, coût par requête — un récit concret à raconter en entretien.
-- **Open source et indépendant du moteur** : Jarvis n'est pas "l'app qui utilise l'API Mistral", c'est **l'orchestration** — le moteur LLM (Mistral par défaut, mais aussi Claude, OpenAI, ou un modèle local via Ollama) est un détail d'implémentation interchangeable. C'est ce choix d'architecture qui fait la valeur du projet, pas un fournisseur en particulier — et qui permet de le déployer dans un environnement très restreint, sans clé API ni réseau sortant.
-
-## Architecture en un coup d'œil
-
-Hexagonale de bout en bout : la logique métier (agent, mémoire, outils) ne parle qu'à des interfaces (**ports**) ; chaque intégration externe (LLM, base de données, caméra) est un **adapter** interchangeable. Détail complet dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+## Architecture
 
 ```
                           ┌─────────────────────┐
-         requêtes ───────▶│   FastAPI (app/api)  │
+         requests ───────▶│   FastAPI (app/api)  │
                           └──────────┬───────────┘
                                      ▼
                           ┌─────────────────────────┐
-                          │      ORCHESTRATEUR       │
-                          │  boucle ReAct + état     │◀── Tools (think, ask_user,
-                          │  (skills, to-do, garde-  │     write_todo, vision…
-                          │   fous) — agent.py +      │     app/core/tools/
-                          │   agent_state.py          │
+                          │      ORCHESTRATOR        │
+                          │  ReAct loop + AgentState │◀── Tools (think, ask_user,
+                          │  (skills, to-do,         │     write_todo, vision…)
+                          │   guardrails)            │     app/core/tools/
                           └────────────┬─────────────┘
-                                       │  parle uniquement à des PORTS
+                                       │  talks only to PORTS
                     ┌──────────────────┼──────────────────┬───────────────┐
                     ▼                  ▼                  ▼               ▼
              ┌─────────────┐   ┌──────────────┐   ┌──────────────┐  ┌───────────┐
              │ LLMProvider  │   │   KVStore     │   │ VectorStore   │  │ Capability │
-             │ (port)       │   │   (port)      │   │  (port)       │  │  (port)    │
              ├─────────────┤   ├──────────────┤   ├──────────────┤  ├───────────┤
-             │ Mistral      │   │ Redis         │   │ Qdrant        │  │ Caméra     │
-             │ Claude       │   │ (interchange- │   │ (interchange- │  │ (registre  │
-             │ OpenAI       │   │  able)        │   │  able)        │  │  optionnel)│
-             │ Ollama/local │   └──────────────┘   └──────────────┘  └───────────┘
+             │ Mistral      │   │ Redis         │   │ Qdrant        │  │ Camera     │
+             │ Claude       │   └──────────────┘   └──────────────┘  │ (optional) │
+             │ OpenAI       │                                         └───────────┘
+             │ Ollama/local │
              └─────────────┘
 ```
 
-## Modularité : ajouter ou retirer un bloc ne casse jamais le reste
+Full write-up (in French): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-Chaque bloc optionnel (aujourd'hui : la caméra) s'enregistre dans un **registre de capacités** au démarrage, seulement s'il répond réellement (`app/core/capabilities/registry.py`, `app/core/bootstrap.py`). Conséquence directe :
+## Honest status
 
-- pas de webcam branchée → l'outil de vision n'existe simplement pas pour cette session, Jarvis continue de tourner ;
-- le jour où un nouveau bloc est ajouté (micro, capteur, intégration tierce), tout composant qui sait interroger le registre en profite immédiatement, sans être modifié.
+| Area | Status |
+|---|---|
+| ReAct loop, `AgentState`, dynamic system prompt, `think` / `ask_user` | Implemented, unit-tested |
+| Human-approval guardrail on irreversible tools | Implemented, unit-tested (anti self-approval rule) |
+| LLM providers (Mistral, Anthropic, OpenAI, Ollama) | Implemented behind one port |
+| FastAPI app, `/health` listing live capabilities, Docker, CI (ruff + pytest) | Implemented |
+| Agent evals (golden dataset + DeepEval) | Present, run separately (needs an API key) |
+| RAG ingestion / retrieval, Redis & Qdrant adapters | Scaffolded |
+| Skills registry / generator, camera capability, scheduled routines | Scaffolded |
+| Langfuse tracing, hybrid search + reranking, multi-model routing | Planned — see [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 
-## Skills : apprendre à Jarvis comme à un vrai assistant
+15 unit tests pass and `ruff` is clean on the current `main`.
 
-Format calqué sur les *Skills* de Claude — un dossier `skills/<nom>/SKILL.md` (frontmatter + instructions), chargé en deux temps (nom + description toujours en mémoire, corps complet chargé à la demande par l'agent). Trois façons de le remplir : à la main, importé, ou généré depuis une tâche réussie (`app/core/skills/generator.py`). Détail du format dans [`skills/README.md`](skills/README.md).
-
-## Stack technique (choix assumés, pas de débat inutile)
-
-| Couche | Choix | Pourquoi |
-|---|---|---|
-| Langage / API | Python 3.12 + FastAPI | Standard du catalogue technique, rapide à itérer |
-| LLM (port + adapters) | Mistral par défaut ; Claude, OpenAI, Ollama interchangeables | `app/core/llm/` — indépendance vis-à-vis du fournisseur |
-| Orchestration agent | LangGraph | "Standard prod 2026" selon le catalogue, state graph explicite |
-| Storage (ports + adapters) | Redis (court terme), Qdrant (long terme/RAG) — interchangeables | `app/core/adapters/`, `app/core/storage_factory.py` |
-| Embeddings | Mistral Embed | Cohérence écosystème Mistral par défaut |
-| Skills | Format SKILL.md (frontmatter + markdown) | Portable, inspiré des Skills Claude |
-| Vision | OpenCV (capture) + provider vision-capable | Capacité optionnelle, dégrade proprement si absente |
-| Observabilité LLM | Langfuse | Leader open-source 2026 selon le catalogue |
-| Tests | pytest + DeepEval + RAGAS | Tests classiques + évals agent + évals RAG |
-| Conteneurisation | Docker + docker-compose | Dockerisation systématique |
-| CI/CD | GitHub Actions | — |
-| Licence | MIT | Open source assumé — cf. [`CONTRIBUTING.md`](CONTRIBUTING.md) |
-
-## Démarrage rapide
+## Quick start
 
 ```bash
-cp .env.example .env          # JARVIS_LLM_PROVIDER=mistral par défaut + la clé correspondante
-docker compose up -d          # lance Qdrant + Redis
+cp .env.example .env          # JARVIS_LLM_PROVIDER=mistral + the matching API key
+docker compose up -d          # Qdrant + Redis
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-`GET http://localhost:8000/health` répond `{"status": "ok", "capabilities": [...]}` — la liste des capacités reflète ce qui est réellement disponible dans l'environnement courant.
+`GET http://localhost:8000/health` returns `{"status": "ok", "capabilities": [...]}`.
 
-Pour tourner 100% en local sans aucune clé API : `JARVIS_LLM_PROVIDER=ollama` + `ollama pull llama3.2` (cf. `.env.example`).
+Fully local, no API key: `JARVIS_LLM_PROVIDER=ollama` and `ollama pull llama3.2`.
 
-## Structure du repo
+Run the tests:
 
-```
-jarvis/
-├── app/
-│   ├── main.py                    # point d'entrée FastAPI + bootstrap des capacités
-│   ├── config.py                  # settings (env vars)
-│   ├── api/routes.py              # endpoints HTTP
-│   ├── core/
-│   │   ├── agent.py               # orchestrateur (ReAct -> LangGraph) + prompt système dynamique
-│   │   ├── agent_state.py         # état persistant: to-do, skills chargés, garde-fous
-│   │   ├── memory.py              # mémoire court/long terme (via ports)
-│   │   ├── ports/                 # interfaces: LLMProvider, KVStore, VectorStore, Capability
-│   │   ├── adapters/              # implémentations storage: Redis, Qdrant
-│   │   ├── llm/                   # port LLM + adapters Mistral/Anthropic/OpenAI/Ollama
-│   │   ├── capabilities/registry.py  # registre des blocs optionnels
-│   │   ├── bootstrap.py           # enregistre les blocs dispo au démarrage
-│   │   ├── skills/                # registre, loader, générateur de skills
-│   │   ├── vision/                # capacité caméra + outil look_at_workspace
-│   │   ├── routines/               # routines programmées (squelette)
-│   │   └── tools/                 # registre d'outils dynamique
-│   └── rag/                       # ingestion + retrieval de la base perso
-├── skills/                        # skills appris (format SKILL.md)
-├── tests/                         # tests unitaires classiques (pytest)
-├── evals/                         # golden dataset + évals agent (DeepEval)
-├── docs/
-│   ├── ARCHITECTURE.md            # hexagonale, modularité, mapping catalogue technique
-│   └── ROADMAP.md                 # feuille de route semaine par semaine
-├── docker-compose.yml              # Qdrant + Redis en local
-├── Dockerfile
-├── LICENSE                         # MIT
-├── CONTRIBUTING.md
-└── .github/workflows/ci.yml        # lint + tests automatiques
+```bash
+pytest tests/ -v
 ```
 
-## Prochaine étape immédiate
+## Tech stack
 
-Voir la semaine 1 dans [`docs/ROADMAP.md`](docs/ROADMAP.md) — l'architecture hexagonale, le registre de capacités, les skills et la vision sont déjà scaffoldés ; il n'y a plus qu'à brancher une clé API et commencer à remplir les `TODO`, dans l'ordre de la roadmap.
+Python 3.12 · FastAPI · LangGraph · Pydantic · Redis · Qdrant · Docker · GitHub Actions · pytest · DeepEval · MIT licence. See [`CONTRIBUTING.md`](CONTRIBUTING.md) to add an LLM provider or a skill.
+
+## Author
+
+Alexis Lalanne — engineering student at École des Mines de Saint-Étienne, building agent architectures (LangGraph / LangChain) in industry. [LinkedIn](https://www.linkedin.com/in/alexis-lalanne-183726207)
